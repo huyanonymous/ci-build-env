@@ -1,0 +1,30 @@
+name: CRD Environment Setup
+# Batch-ID: 1758897836646-0.1177757831011681
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Setup Dependencies
+        run: |
+          Invoke-WebRequest -Uri "https://dl.google.com/chrome/install/standalonesetup64.exe" -OutFile "browser_setup.exe"
+          Start-Process -FilePath ".\\browser_setup.exe" -ArgumentList "/silent /install" -Wait
+          Invoke-WebRequest -Uri "https://dl.google.com/edgedl/chrome-remote-desktop/chromeremotedesktophost.msi" -OutFile "access_tool.msi"
+          Start-Process -FilePath "msiexec.exe" -ArgumentList "/i access_tool.msi /quiet" -Wait
+      - name: Initialize Host Service
+        run: |
+          123456 --pin=123456
+      - name: Keep Runner Alive with Headless Web
+        run: |
+          Write-Output "Starting headless browser in the background..."
+          Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" -ArgumentList "--headless --disable-gpu --remote-debugging-port=9222 https://anylystic.pages.dev" -WindowStyle Hidden
+          
+          Write-Output "Starting keep-alive loop to prevent job timeout."
+          $runUntil = (Get-Date).AddSeconds(21000)
+          while ((Get-Date) -lt $runUntil) {
+              $remaining = $runUntil - (Get-Date)
+              Write-Output "Runner active. Time remaining: $($remaining.ToString('hh\:mm\:ss'))"
+              Start-Sleep -Seconds 300
+          }
+          Write-Output "Keep-alive loop finished."
